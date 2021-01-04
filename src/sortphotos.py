@@ -323,6 +323,12 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, u
     if test:
         test_file_dict = {}
 
+    # counters for summary
+    fileCoplied = 0
+    fileMoved = 0
+    fileIgnored = 0
+    fileRenamed = 0
+
     # parse output extracting oldest relevant date
     for idx, data in enumerate(metadata):
 
@@ -400,6 +406,7 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, u
         # check for collisions
         append = 1
         fileIsIdentical = False
+        fileIsRenamed = False
 
         while True:
 
@@ -421,28 +428,32 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, u
                     else:
                         dest_file = root + '_' + str(append) + ext
                     append += 1
+                    fileIsRenamed = True
                     if verbose:
                         print('Same name already exists...renaming to: ' + dest_file)
 
             else:
                 break
 
-
         # finally move or copy the file
-        if test:
-            test_file_dict[dest_file] = src_file
-
+        if fileIsIdentical:
+            fileIgnored += 1
+            continue  # ignore identical files
         else:
-
-            if fileIsIdentical:
-                continue  # ignore identical files
-            else:
-                if copy_files:
+            if copy_files:
+                fileCoplied += 1
+                if test:
+                    test_file_dict[dest_file] = src_file
+                else:
                     shutil.copy2(src_file, dest_file)
+            else:
+                fileMoved += 1
+                if test:
+                    test_file_dict[dest_file] = src_file
                 else:
                     shutil.move(src_file, dest_file)
-
-
+            if fileIsRenamed:
+                fileRenamed += 1
 
         if verbose:
             print()
@@ -452,6 +463,15 @@ def sortPhotos(src_dir, dest_dir, sort_format, rename_format, recursive=False, u
     if not verbose:
         print()
 
+    print("====== SUMMARY ======")
+    print("Files duplicated and ignored: " + str(fileIgnored));
+    print("Filenames collision and renamed: " + str(fileRenamed));
+    print("Files copied: " + str(fileCoplied));
+    print("Files movied: " + str(fileMoved));
+    print("=====================")
+    if test and verbose:
+        for k,v in test_file_dict.items():
+            print(v + " => " + k)
 
 def main():
     import argparse
