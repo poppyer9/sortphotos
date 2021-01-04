@@ -184,6 +184,7 @@ class ExifTool(object):
     """used to run ExifTool from Python and keep it open"""
 
     sentinel = "{ready}"
+    block_size = 4096
 
     def __init__(self, executable=exiftool_location, verbose=False):
         self.executable = executable
@@ -204,12 +205,16 @@ class ExifTool(object):
         self.process.stdin.write(str.join("\n", args).encode('utf-8'))
         self.process.stdin.flush()
         output = ""
+        increment = ""
         fd = self.process.stdout.fileno()
-        while not output.rstrip(' \t\n\r').endswith(self.sentinel):
-            increment = os.read(fd, 4096)
+        while not increment.rstrip(' \t\n\r').endswith(self.sentinel):
+            increment = os.read(fd, self.block_size)
+            if len(increment) == self.block_size:
+                self.block_size *= 2
+            increment = increment.decode('utf-8')
             if self.verbose:
-                sys.stdout.write(increment.decode('utf-8'))
-            output += increment.decode('utf-8')
+                sys.stdout.write(increment)
+            output += increment
         return output.rstrip(' \t\n\r')[:-len(self.sentinel)]
 
     def get_metadata(self, *args):
